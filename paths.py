@@ -19,6 +19,9 @@ PM.tiled_images_dir = PM.tiled / "images"
 PM.tiled_masks_dir = PM.tiled / "masks"
 
 ### Training
+PM.segmentation_fcn = PM.results / "Segmentation FCN"
+
+
 
 # 3. Make directories and check status
 PM.make_dirs()
