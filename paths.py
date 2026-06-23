@@ -20,7 +20,7 @@ PM.tiled_masks_dir = PM.tiled / "masks"
 
 ### Training
 PM.segmentation_fcn = PM.results / "Segmentation FCN"
-
+PM.segmentation_deeplab = PM.results / "Segmentation DeepLab"
 
 
 # 3. Make directories and check status

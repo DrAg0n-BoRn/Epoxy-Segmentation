@@ -7,7 +7,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.19.3
   kernelspec:
-    display_name: epoxy-segmentation (3.12.3.final.0)
+    display_name: epoxy-segmentation
     language: python
     name: python3
 ---
@@ -15,7 +15,7 @@ jupyter:
 ```python
 from ml_tools.ML_datasetmaster import DragonDatasetSegmentation as ChosenDataset
 from ml_tools.ML_trainer import DragonTrainer as ChosenTrainer
-from ml_tools.ML_models_vision import DragonFCN as ChosenModel
+from ml_tools.ML_models_vision import DragonDeepLabv3 as ChosenModel
 from ml_tools.ML_configuration import (
     FormatMultiClassSegmentationMetrics as ChosenMetricsConfig, 
     FinalizeMultiClassSegmentation as ChosenFinalizer, 
@@ -24,7 +24,7 @@ from ml_tools.ML_configuration import (
 from ml_tools.ML_configuration import DragonTrainingConfig
 from ml_tools.ML_callbacks import DragonModelCheckpoint, DragonPatienceEarlyStopping, DragonPlateauScheduler
 from ml_tools.ML_utilities import build_optimizer_params, inspect_model_architecture
-from ml_tools.IO_tools import train_logger, save_json
+from ml_tools.IO_tools import train_logger
 from ml_tools.keys import TaskKeys
 from torch.optim import AdamW
 
@@ -37,7 +37,7 @@ from helpers.constants import CLASS_MAP
 ```
 
 ```python
-TRAIN_ARTIFACTS_DIR = PM.segmentation_fcn
+TRAIN_ARTIFACTS_DIR = PM.segmentation_deeplab
 ```
 
 ## 1. Config
@@ -47,16 +47,16 @@ train_config = DragonTrainingConfig(
     validation_size=0.1,
     test_size=0.1,
     initial_learning_rate=0.005,
-    batch_size=3,
+    batch_size=16,
     task = TaskKeys.MULTICLASS_SEGMENTATION,
     device = "cuda:0",
-    finalized_filename = "segmentation_fcn_epoxy",
+    finalized_filename = "segmentation_deeplabv3_resnet101_epoxy",
     random_state=101,
     
-    weight_decay=0.02,
-    early_stop_patience=5,
+    weight_decay=0.05,
+    early_stop_patience=15,
     scheduler_patience=2,
-    scheduler_lr_factor=0.6,
+    scheduler_lr_factor=0.8,
     monitor_metric="Validation Loss"
 )
 ```
@@ -86,12 +86,13 @@ train_ds, val_ds, test_ds = dataset.get_datasets()
 ```python
 model = ChosenModel(num_classes=len(CLASS_MAP),
                     in_channels=3,
-                    model_name="fcn_resnet50")
+                    model_name="deeplabv3_resnet101")
 
 
 # optimizer
 optim_params = build_optimizer_params(model=model, weight_decay=train_config.weight_decay)
 optimizer = AdamW(params=optim_params, lr=train_config.initial_learning_rate)
+
 
 trainer = ChosenTrainer(model=model,
                         train_dataset=train_ds,
@@ -133,11 +134,12 @@ model.save_architecture(TRAIN_ARTIFACTS_DIR)
 inspect_model_architecture(model=model, save_dir=TRAIN_ARTIFACTS_DIR)
 
 # Save class map
-save_json(data=dataset.class_map, directory=TRAIN_ARTIFACTS_DIR, filename="class_map.json")
+dataset.save_class_map(save_dir=TRAIN_ARTIFACTS_DIR)
+dataset.save_transform_recipe(filepath=TRAIN_ARTIFACTS_DIR / "transform_recipe.json")
 
 # Train log
 train_logger(train_config=train_config,
-             model_parameters=None,
+             model_parameters={"model": "deeplabv3_resnet101", "num_classes": len(CLASS_MAP), "in_channels": 3},
              train_history=history,
              save_directory=TRAIN_ARTIFACTS_DIR)
 ```
