@@ -1,6 +1,6 @@
 from ml_tools.ML_vision_transformers import make_tiled_dataset
 
-from helpers.constants import CLASS_MAP, CLASS_BACKGROUND
+from helpers.constants import CLASS_MAP, CLASS_BACKGROUND, IMAGE_WINDOW_SIZE
 from paths import PM
 
 
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     
     make_tiled_dataset(input_dir=PM.images_dir,
                        mask_dir=PM.masks_dir,
-                       window_size=512,
+                       window_size=IMAGE_WINDOW_SIZE,
                        stride=0.8,
                        drop_empty_masks_by_value=CLASS_MAP[CLASS_BACKGROUND])
 

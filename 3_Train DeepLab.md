@@ -7,7 +7,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.19.3
   kernelspec:
-    display_name: epoxy-segmentation
+    display_name: epoxy-segmentation (3.12.12)
     language: python
     name: python3
 ---
@@ -29,7 +29,7 @@ from ml_tools.keys import TaskKeys
 from torch.optim import AdamW
 
 from paths import PM
-from helpers.constants import CLASS_MAP
+from helpers.constants import CLASS_MAP, IMAGE_CHANNELS
 ```
 
 ```python
@@ -85,7 +85,7 @@ train_ds, val_ds, test_ds = dataset.get_datasets()
 
 ```python
 model = ChosenModel(num_classes=len(CLASS_MAP),
-                    in_channels=3,
+                    in_channels=IMAGE_CHANNELS,
                     model_name="deeplabv3_resnet101")
 
 
@@ -135,11 +135,11 @@ inspect_model_architecture(model=model, save_dir=TRAIN_ARTIFACTS_DIR)
 
 # Save class map
 dataset.save_class_map(save_dir=TRAIN_ARTIFACTS_DIR)
-dataset.save_transform_recipe(filepath=TRAIN_ARTIFACTS_DIR / "transform_recipe.json")
+dataset.save_transform_recipe(filepath=PM.transform_recipe)
 
 # Train log
 train_logger(train_config=train_config,
-             model_parameters={"model": "deeplabv3_resnet101", "num_classes": len(CLASS_MAP), "in_channels": 3},
+             model_parameters={"model": "deeplabv3_resnet101", "num_classes": len(CLASS_MAP), "in_channels": IMAGE_CHANNELS},
              train_history=history,
              save_directory=TRAIN_ARTIFACTS_DIR)
 ```

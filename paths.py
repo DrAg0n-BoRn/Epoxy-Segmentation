@@ -22,6 +22,12 @@ PM.tiled_masks_dir = PM.tiled / "masks"
 PM.segmentation_fcn = PM.results / "Segmentation FCN"
 PM.segmentation_deeplab = PM.results / "Segmentation DeepLab"
 
+### Transform recipe file
+PM.transform_recipe = PM.results / "transform_recipe.json"
+
+### Inference
+PM.tiled_inference_dir = PM.data / "images_inference_tiled"
+PM.reconstructed_inference_dir = PM.results / "Predicted Masks"
 
 # 3. Make directories and check status
 PM.make_dirs()
