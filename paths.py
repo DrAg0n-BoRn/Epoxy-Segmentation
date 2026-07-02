@@ -29,6 +29,9 @@ PM.transform_recipe = PM.results / "transform_recipe.json"
 PM.tiled_inference_dir = PM.data / "images_inference_tiled"
 PM.reconstructed_inference_dir = PM.results / "Predicted Masks"
 
+### Physical Properties
+PM.properties_dir = PM.results / "Physical Properties"
+
 # 3. Make directories and check status
 PM.make_dirs()
 
