@@ -7,7 +7,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.19.3
   kernelspec:
-    display_name: .venv
+    display_name: epoxy-segmentation (3.12.12)
     language: python
     name: python3
 ---
@@ -59,11 +59,13 @@ def plot_properties(data: dict[str, Union[int, float]], ylabel: str, filename: s
     Generates a bar plot for the provided properties and saves it to disk.
     """
     with plt.rc_context({'font.size': 14, 'axes.labelsize': 16, 'xtick.labelsize': 14, 'ytick.labelsize': 14}):
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(12, 6))
         
-        keys = list(data.keys())
-        values = list(data.values())
-        sns.barplot(x=keys, y=values, hue=keys, palette="viridis", legend=False)
+        # Sort the dictionary by values in descending order
+        sorted_data = dict(sorted(data.items(), key=lambda item: item[1], reverse=True))
+        keys = list(sorted_data.keys())
+        values = list(sorted_data.values())
+        sns.barplot(x=keys, y=values, hue=keys, palette="husl", legend=False)
         
         plt.title('')
         plt.xlabel('')
@@ -102,26 +104,26 @@ save_json(data=core_matrix_porosity,
           filename="core_matrix_porosity.json")
 ```
 
-## Polymer Coating Volume Fraction Calculation
+## Polymer Coating Area Fraction Calculation
 
 ```python
-polymer_coating_volume_fraction: dict[str, float] = {}
+polymer_coating_area_fraction: dict[str, float] = {}
 
 for img_name, pixel_counts in all_images.items():
-    current_volume_fraction = pixel_counts[CLASS_POLYMER_COATING] / (pixel_counts[CLASS_FIBER_EPOXY_MATRIX] + pixel_counts[CLASS_VOIDS] + pixel_counts[CLASS_POLYMER_COATING])
-    polymer_coating_volume_fraction[img_name] = current_volume_fraction
+    current_area_fraction = pixel_counts[CLASS_POLYMER_COATING] / (pixel_counts[CLASS_FIBER_EPOXY_MATRIX] + pixel_counts[CLASS_VOIDS] + pixel_counts[CLASS_POLYMER_COATING])
+    polymer_coating_area_fraction[img_name] = current_area_fraction
 ```
 
 ```python
-# visualize the polymer coating volume fraction results
-plot_properties(data=polymer_coating_volume_fraction,
-                ylabel="Polymer Coating Volume Fraction",
-                filename="polymer_coating_volume_fraction.svg")
+# visualize the polymer coating area fraction results
+plot_properties(data=polymer_coating_area_fraction,
+                ylabel="Polymer Coating Area Fraction",
+                filename="polymer_coating_area_fraction.svg")
 ```
 
 ```python
-# save the core matrix porosity results to a JSON file
-save_json(data=core_matrix_porosity,
+# save the polymer coating area fraction results to a JSON file
+save_json(data=polymer_coating_area_fraction,
           directory=PM.properties_dir, 
-          filename="polymer_coating_volume_fraction.json")
+          filename="polymer_coating_area_fraction.json")
 ```
