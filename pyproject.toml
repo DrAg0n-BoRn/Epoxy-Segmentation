@@ -5,7 +5,7 @@ description = "Segmentation of Carbon Fiber-Epoxy composite microstructure image
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "dragon-ml-toolbox[ml]==23.3.0",
+    "dragon-ml-toolbox[ml]==24.0.1",
 ]
 
 [dependency-groups]

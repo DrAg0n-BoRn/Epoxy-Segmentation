@@ -30,7 +30,8 @@ from ml_tools.keys import TaskKeys
 from torch.optim import AdamW
 
 from paths import PM
-from helpers.constants import CLASS_MAP, IMAGE_CHANNELS
+from helpers.constants import CLASS_MAP, IMAGE_CHANNELS, CLASS_VOIDS
+from helpers.picl import PhysicsInformedCompositeLoss
 ```
 
 ```python
@@ -38,7 +39,7 @@ from helpers.constants import CLASS_MAP, IMAGE_CHANNELS
 ```
 
 ```python
-TRAIN_ARTIFACTS_DIR = PM.segmentation_deeplab
+TRAIN_ARTIFACTS_DIR = PM.segmentation_deeplab_picl_99
 ```
 
 ## 1. Config
@@ -51,14 +52,16 @@ train_config = DragonTrainingConfig(
     batch_size=16,
     task = TaskKeys.MULTICLASS_SEGMENTATION,
     device = "cuda:0",
-    finalized_filename = "segmentation_deeplabv3_resnet101_epoxy",
+    finalized_filename = "segmentation_deeplabv3_PICL_99_resnet101_epoxy",
     random_state=101,
     
     weight_decay=0.05,
     early_stop_patience=15,
     scheduler_patience=2,
     scheduler_lr_factor=0.8,
-    monitor_metric="Validation Loss"
+    monitor_metric="Validation Loss",
+    cross_entropy_weight=1.0,
+    physics_weight=0.99,
 )
 ```
 
@@ -96,6 +99,11 @@ model = ChosenModel(**model_params)
 optim_params = build_optimizer_params(model=model, weight_decay=train_config.weight_decay)
 optimizer = AdamW(params=optim_params, lr=train_config.initial_learning_rate)
 
+# Physcis informed loss
+picl = PhysicsInformedCompositeLoss(ce_weight=train_config.cross_entropy_weight,
+                                    physics_weight=train_config.physics_weight,
+                                    void_class_index=CLASS_MAP[CLASS_VOIDS]
+                                    )
 
 trainer = ChosenTrainer(model=model,
                         train_dataset=train_ds,
@@ -109,7 +117,8 @@ trainer = ChosenTrainer(model=model,
                                                                             monitor=train_config.monitor_metric),
                         lr_scheduler_callback=DragonPlateauScheduler(monitor=train_config.monitor_metric,
                                                                      patience=train_config.scheduler_patience,
-                                                                     factor=train_config.scheduler_lr_factor),  
+                                                                     factor=train_config.scheduler_lr_factor),
+                        criterion=picl
                         )
 ```
 
@@ -124,8 +133,8 @@ history = trainer.fit(epochs=1000, batch_size=train_config.batch_size)
 ```python
 trainer.evaluate(model_checkpoint="best",
                 test_data=test_ds,
-                val_format_configuration=ChosenMetricsConfig(),
-                test_format_configuration=ChosenMetricsConfig(heatmap_cmap="viridis", radar_line_color="orange", cm_cmap="BuPu")
+                val_format_configuration=ChosenMetricsConfig(heatmap_cmap="plasma", radar_line_color="mediumspringgreen", cm_cmap="cool"),
+                test_format_configuration=ChosenMetricsConfig(heatmap_cmap="magma", radar_line_color="crimson", cm_cmap="Wistia")
                 )
 ```
 

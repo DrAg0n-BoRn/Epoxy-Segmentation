@@ -17,10 +17,11 @@ from ml_tools.ML_inference_vision import DragonSegmentationInference
 from ml_tools.ML_models_vision import DragonDeepLabv3
 from ml_tools.path_manager import list_subdirectories
 from ml_tools.IO_tools import save_json
+from ml_tools.ML_utilities import DragonArtifactFinder
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Union
+from typing import Union, Literal
 
 from paths import PM
 from helpers.constants import CLASS_FIBER_EPOXY_MATRIX, CLASS_POLYMER_COATING, CLASS_VOIDS
@@ -29,12 +30,31 @@ from helpers.constants import CLASS_FIBER_EPOXY_MATRIX, CLASS_POLYMER_COATING, C
 ## Initialize Inference Engine
 
 ```python
-model = DragonDeepLabv3.load_architecture(PM.segmentation_deeplab)
+def load_model(chosen_model: Literal["deeplabv3", "deeplabv3_picl_10", "deeplabv3_picl_50", "deeplabv3_picl_99"]) -> DragonSegmentationInference:
+    if chosen_model == "deeplabv3":
+        model_architecture_path = PM.segmentation_deeplab
+    elif chosen_model == "deeplabv3_picl_10":
+        model_architecture_path = PM.segmentation_deeplab_picl_10
+    elif chosen_model == "deeplabv3_picl_50":
+        model_architecture_path = PM.segmentation_deeplab_picl_50
+    elif chosen_model == "deeplabv3_picl_99":
+        model_architecture_path = PM.segmentation_deeplab_picl_99
+    else:
+        raise ValueError(f"Invalid chosen_model: {chosen_model}. Must be one of ['deeplabv3', 'deeplabv3_picl_10', 'deeplabv3_picl_50', 'deeplabv3_picl_99']")
     
-inference_handler = DragonSegmentationInference(model=model,
-                                                state_dict= PM.segmentation_deeplab / "segmentation_deeplabv3_resnet101_epoxy.pth",
-                                                transform_source=PM.transform_recipe,
-                                                device="cuda:0")
+    artifact_finder = DragonArtifactFinder(directory=model_architecture_path, load_scaler=False, load_schema=False)
+    
+    model = DragonDeepLabv3.load_architecture(artifact_finder.model_architecture_path) # type: ignore
+    
+    inference_handler = DragonSegmentationInference(model=model,
+                                                    state_dict=artifact_finder.weights_path, # type: ignore
+                                                    transform_source=PM.transform_recipe,
+                                                    device="cuda:0")
+    return inference_handler
+```
+
+```python
+inference_handler = load_model(chosen_model="deeplabv3_picl_99")
 ```
 
 ## Get pixel count per class

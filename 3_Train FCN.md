@@ -14,11 +14,12 @@ jupyter:
 
 ```python
 from ml_tools.ML_datasetmaster import DragonDatasetSegmentation as ChosenDataset
-from ml_tools.ML_trainer import DragonTrainer as ChosenTrainer
+from ml_tools.ML_trainer import DragonVisionTrainer as ChosenTrainer
 from ml_tools.ML_models_vision import DragonFCN as ChosenModel
 from ml_tools.ML_configuration import (
     FormatMultiClassSegmentationMetrics as ChosenMetricsConfig, 
     FinalizeMultiClassSegmentation as ChosenFinalizer, 
+    DragonFCNParams as ChosenModelParams
 )
 
 from ml_tools.ML_configuration import DragonTrainingConfig
@@ -84,9 +85,11 @@ train_ds, val_ds, test_ds = dataset.get_datasets()
 ## 3. Model and Trainer
 
 ```python
-model = ChosenModel(num_classes=len(CLASS_MAP),
-                    in_channels=IMAGE_CHANNELS,
-                    model_name="fcn_resnet101")
+model_params = ChosenModelParams(num_classes=len(CLASS_MAP),
+                                 in_channels=IMAGE_CHANNELS,
+                                 model_name="fcn_resnet101")
+
+model = ChosenModel(**model_params)
 
 
 # optimizer
@@ -126,6 +129,10 @@ trainer.evaluate(model_checkpoint="best",
                 )
 ```
 
+```python
+trainer.explain_captum(n_samples=5, n_steps=10)
+```
+
 ## 6. Save artifacts
 
 ```python
@@ -139,7 +146,7 @@ dataset.save_transform_recipe(filepath=PM.transform_recipe)
 
 # Train log
 train_logger(train_config=train_config,
-             model_parameters={"model": "fcn_resnet101", "num_classes": len(CLASS_MAP), "in_channels": IMAGE_CHANNELS},
+             model_parameters=model_params,
              train_history=history,
              save_directory=TRAIN_ARTIFACTS_DIR)
 ```
@@ -147,8 +154,7 @@ train_logger(train_config=train_config,
 ## 7. Finalize Deep Learning
 
 ```python
-trainer.finalize_model_training(model_checkpoint='current',
-                                finalize_config=ChosenFinalizer(filename=train_config.finalized_filename,
+trainer.finalize_model_training(finalize_config=ChosenFinalizer(filename=train_config.finalized_filename,
                                                                 class_map=dataset.class_map)
                                 )
 ```

@@ -22,6 +22,11 @@ PM.tiled_masks_dir = PM.tiled / "masks"
 PM.segmentation_fcn = PM.results / "Segmentation FCN"
 PM.segmentation_deeplab = PM.results / "Segmentation DeepLab"
 
+### Physics Informed Loss
+PM.segmentation_deeplab_picl_10 = PM.results / "Segmentation DeepLab PICL 10"
+PM.segmentation_deeplab_picl_50 = PM.results / "Segmentation DeepLab PICL 50"
+PM.segmentation_deeplab_picl_99 = PM.results / "Segmentation DeepLab PICL 99"
+
 ### Transform recipe file
 PM.transform_recipe = PM.results / "transform_recipe.json"
 
