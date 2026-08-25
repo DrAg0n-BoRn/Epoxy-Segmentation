@@ -13,24 +13,22 @@ jupyter:
 ---
 
 ```python
-from ml_tools.ML_datasetmaster import DragonDatasetSegmentation as ChosenDataset
-from ml_tools.ML_trainer import DragonVisionTrainer as ChosenTrainer
-from ml_tools.ML_models_vision import DragonFCN as ChosenModel
-from ml_tools.ML_configuration import (
+from dragon.ML_datasetmaster import DragonDatasetSegmentation as ChosenDataset
+from dragon.ML_trainer import DragonVisionTrainer as ChosenTrainer
+from dragon.ML_models_vision import DragonFCN as ChosenModel
+from dragon.ML_configuration import (
     FormatMultiClassSegmentationMetrics as ChosenMetricsConfig, 
     FinalizeMultiClassSegmentation as ChosenFinalizer, 
-    DragonFCNParams as ChosenModelParams
 )
+from dragon.ML_loss import DiceLoss
 
-from ml_tools.ML_configuration import DragonTrainingConfig
-from ml_tools.ML_callbacks import DragonModelCheckpoint, DragonPatienceEarlyStopping, DragonPlateauScheduler
-from ml_tools.ML_utilities import build_optimizer_params, inspect_model_architecture
-from ml_tools.IO_tools import train_logger
-from ml_tools.keys import TaskKeys
+from dragon.ML_configuration import DragonTrainingConfig
+from dragon.ML_callbacks import DragonPatienceEarlyStopping, DragonPlateauScheduler
+from dragon.ML_utilities import build_optimizer_params
+from dragon.keys import TaskKeys
 from torch.optim import AdamW
 
 from paths import PM
-from helpers.constants import CLASS_MAP, IMAGE_CHANNELS
 ```
 
 ```python
@@ -39,25 +37,24 @@ from helpers.constants import CLASS_MAP, IMAGE_CHANNELS
 
 ```python
 TRAIN_ARTIFACTS_DIR = PM.segmentation_fcn
+DATASET_MANIFEST_FILE = PM.dataset_manifest_file
 ```
 
 ## 1. Config
 
 ```python
 train_config = DragonTrainingConfig(
-    validation_size=0.1,
-    test_size=0.1,
-    initial_learning_rate=0.005,
+    initial_learning_rate=0.002,
     batch_size=16,
     task = TaskKeys.MULTICLASS_SEGMENTATION,
     device = "cuda:0",
     finalized_filename = "segmentation_fcn101_epoxy",
-    random_state=101,
     
-    weight_decay=0.05,
+    weight_decay=0.001,
     early_stop_patience=15,
-    scheduler_patience=2,
-    scheduler_lr_factor=0.8,
+    scheduler_patience=3,
+    improvement_delta=0.0020,
+    scheduler_lr_factor=0.6,
     monitor_metric="Validation Loss"
 )
 ```
@@ -65,65 +62,53 @@ train_config = DragonTrainingConfig(
 ## 2. Make Datasets
 
 ```python
-dataset = ChosenDataset.from_folders(image_dir=PM.tiled_images_dir, mask_dir=PM.tiled_masks_dir)
-```
-
-```python
-dataset.set_class_map(CLASS_MAP)
-dataset.split_data(val_size=train_config.validation_size, test_size=train_config.test_size, random_state=train_config.random_state)
-```
-
-```python
-dataset.configure_transforms(resize_size=512, 
-                             crop_size=None)
-```
-
-```python
-train_ds, val_ds, test_ds = dataset.get_datasets()
+dataset = ChosenDataset.from_manifest(DATASET_MANIFEST_FILE)
 ```
 
 ## 3. Model and Trainer
 
 ```python
-model_params = ChosenModelParams(num_classes=len(CLASS_MAP),
-                                 in_channels=IMAGE_CHANNELS,
-                                 model_name="fcn_resnet101")
-
-model = ChosenModel(**model_params)
-
+model = ChosenModel(num_classes=len(dataset.class_map),
+                    in_channels=dataset.image_channels,
+                    model_name="fcn_resnet101")
 
 # optimizer
 optim_params = build_optimizer_params(model=model, weight_decay=train_config.weight_decay)
 optimizer = AdamW(params=optim_params, lr=train_config.initial_learning_rate)
 
+# loss
+loss_fn = DiceLoss()
 
 trainer = ChosenTrainer(model=model,
-                        train_dataset=train_ds,
-                        validation_dataset=val_ds,
+                        train_dataset=dataset.train_dataset,
+                        validation_dataset=dataset.validation_dataset,
                         save_dir=TRAIN_ARTIFACTS_DIR,
                         kind=train_config.task,
                         optimizer=optimizer,
                         device=train_config.device,
-                        checkpoint_callback=DragonModelCheckpoint(monitor=train_config.monitor_metric),
                         early_stopping_callback=DragonPatienceEarlyStopping(patience=train_config.early_stop_patience, 
-                                                                            monitor=train_config.monitor_metric),
+                                                                            monitor=train_config.monitor_metric,
+                                                                            min_delta=train_config.improvement_delta), # type: ignore
                         lr_scheduler_callback=DragonPlateauScheduler(monitor=train_config.monitor_metric,
                                                                      patience=train_config.scheduler_patience,
-                                                                     factor=train_config.scheduler_lr_factor),  
+                                                                     factor=train_config.scheduler_lr_factor),
+                        criterion=loss_fn
                         )
 ```
 
 ## 4. Training
 
 ```python
-history = trainer.fit(epochs=1000, batch_size=train_config.batch_size)
+trainer.fit(epochs=500, 
+            batch_size=train_config.batch_size, 
+            use_torch_compile=True)
 ```
 
 ## 5. Evaluation
 
 ```python
 trainer.evaluate(model_checkpoint="best",
-                test_data=test_ds,
+                test_data=dataset.test_dataset,
                 val_format_configuration=ChosenMetricsConfig(),
                 test_format_configuration=ChosenMetricsConfig(heatmap_cmap="viridis", radar_line_color="orange", cm_cmap="BuPu")
                 )
@@ -138,17 +123,9 @@ trainer.explain_captum(n_samples=5, n_steps=10)
 ```python
 # Model artifacts
 model.save_architecture(TRAIN_ARTIFACTS_DIR)
-inspect_model_architecture(model=model, save_dir=TRAIN_ARTIFACTS_DIR)
-
-# Save class map
-dataset.save_class_map(save_dir=TRAIN_ARTIFACTS_DIR)
-dataset.save_transform_recipe(filepath=PM.transform_recipe)
 
 # Train log
-train_logger(train_config=train_config,
-             model_parameters=model_params,
-             train_history=history,
-             save_directory=TRAIN_ARTIFACTS_DIR)
+trainer.save_training_log(train_config=train_config)
 ```
 
 ## 7. Finalize Deep Learning

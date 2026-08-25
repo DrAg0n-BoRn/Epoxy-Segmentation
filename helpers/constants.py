@@ -13,4 +13,7 @@ CLASS_MAP = {
 
 
 IMAGE_WINDOW_SIZE = 512
-IMAGE_CHANNELS = 3
+
+# Physical properties constants
+RELATIVE_MATRIX_POROSITY_FILENAME = "relative_matrix_porosity"
+RELATIVE_COATING_AREA_FILENAME = "relative_polymer_coating_area"

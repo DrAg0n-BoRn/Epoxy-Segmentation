@@ -1,33 +1,119 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
+
+from .constants import CLASS_MAP, CLASS_POLYMER_COATING, CLASS_VOIDS
+
 
 class PhysicsInformedCompositeLoss(nn.Module):
     """
-    A loss function that combines standard cross-entropy with a physics-informed penalty based on the predicted void class. 
-    The penalty encourages the model to produce more contiguous void regions by penalizing fragmented predictions.
+    A loss function that combines a baseline loss with a physics-informed penalty for Voids and Polymer Coating classes. 
+    
+    The physics-informed penalty is designed to encourage more realistic predictions by penalizing the predicted masks based on their morphological properties.
+    
+    Uses the CLASS_MAP to determine class indices.
     """
-    def __init__(self, ce_weight=1.0, physics_weight=0.1, void_class_index=2):
+    def __init__(
+        self, 
+        baseline: Optional[nn.Module] = None,
+        baseline_weight: float = 1.0, 
+        physics_weight: float = 0.1
+    ):
         """
+        Initialize the PhysicsInformedCompositeLoss.
+        
+        It depends on the CLASS_MAP (`constants.py`) to determine the indices of the void and polymer coating classes, 
+        and applies a physics-informed penalty based on the predicted masks for these classes.
+        
         Args:
-            ce_weight (float): Weight for the cross-entropy loss component.
-            physics_weight (float): Weight for the physics-informed penalty component.
-            void_class_index (int): The index of the void class in the logits tensor.
+            baseline (nn.Module | None): The baseline loss function, if None, defaults to CrossEntropyLoss.
+            baseline_weight (float): Weight for the baseline loss.
+            physics_weight (float): Weight for the physics-informed penalty.
         """
         super().__init__()
-        self.ce_loss = nn.CrossEntropyLoss()
-        self.ce_weight = ce_weight
         self.physics_weight = physics_weight
-        self.void_class_index = void_class_index
+        self.baseline_weight = baseline_weight
         
+        self.void_class_index = CLASS_MAP[CLASS_VOIDS]
+        self.polymer_coating_class_index = CLASS_MAP[CLASS_POLYMER_COATING]
+        
+        self.base_loss = baseline if baseline is not None else nn.CrossEntropyLoss()
+    
     def forward(self, logits, targets):
-        # Standard Cross-Entropy calculation
-        base_loss = self.ce_loss(logits, targets)
+        base_loss = self.base_loss(logits, targets)
         
-        # Convert raw logits to probabilities
         probs = F.softmax(logits, dim=1)
+        physics_penalty = 0.0
         
-        # Extract the probability map specifically for the Voids class
+        class_probs_voids = probs[:, self.void_class_index, :, :]
+        class_probs_polymer = probs[:, self.polymer_coating_class_index, :, :]
+        
+        # Calculate spatial gradients to detect predicted perimeters per class
+        dy_voids = torch.abs(class_probs_voids[:, 1:, :] - class_probs_voids[:, :-1, :])
+        dx_voids = torch.abs(class_probs_voids[:, :, 1:] - class_probs_voids[:, :, :-1])
+        
+        dy_polymer = torch.abs(class_probs_polymer[:, 1:, :] - class_probs_polymer[:, :-1, :])
+        dx_polymer = torch.abs(class_probs_polymer[:, :, 1:] - class_probs_polymer[:, :, :-1])
+        
+        perimeter_voids = torch.sum(dx_voids) + torch.sum(dy_voids)
+        perimeter_polymer = torch.sum(dx_polymer) + torch.sum(dy_polymer)
+        
+        # penalty for voids: scale-invariant compactness
+        area_voids = torch.sum(class_probs_voids) + 1e-6
+        # perimeter_sq_voids = perimeter_voids ** 2
+        physics_penalty += (perimeter_voids / area_voids)
+        
+        # penalty for polymer coating: pure total variation
+        num_pixels_polymer = class_probs_polymer.shape[1] * class_probs_polymer.shape[2]
+        physics_penalty += (perimeter_polymer / num_pixels_polymer)
+        
+        total_loss = (self.baseline_weight * base_loss) + (self.physics_weight * physics_penalty)
+        
+        return total_loss
+
+    def to_dict(self):
+        return {
+            "baseline": self.base_loss.__class__.__name__,
+            "baseline_weight": self.baseline_weight,
+            "physics_weight": self.physics_weight,
+        }
+
+
+class PhysicsInformedVoidsLoss(nn.Module):
+    """
+    Loss that combines a baseline loss function with a physics-informed penalty based specifically on the predicted void class.
+    """
+    def __init__(
+        self, 
+        baseline: Optional[nn.Module] = None,
+        baseline_weight: float = 1.0,
+        physics_weight: float = 0.1, 
+    ):
+        """
+        Initialize the PhysicsInformedVoidsLoss.
+        
+        Uses the CLASS_MAP (`constants.py`) to identify the index of the void class and applies a physics-informed penalty based on the predicted voids.
+
+        Args:
+            baseline (nn.Module): The baseline loss function. If None, defaults to CrossEntropyLoss.
+            baseline_weight (float): The weight for the baseline loss.
+            physics_weight (float): The weight for the physics-informed penalty.
+        """
+        super().__init__()
+        self.physics_weight = physics_weight
+        self.void_class_index = CLASS_MAP[CLASS_VOIDS]
+        self.baseline_weight = baseline_weight
+        
+        # Initialize the selected baseline loss module
+        self.base_loss = baseline if baseline is not None else nn.CrossEntropyLoss()
+            
+    def forward(self, logits, targets):
+        # 1. Baseline Calculation
+        base_loss = self.base_loss(logits, targets)
+        
+        # 2. Physics-Informed Penalty
+        probs = F.softmax(logits, dim=1)
         void_probs = probs[:, self.void_class_index, :, :]
         
         # Calculate spatial gradients to detect predicted void perimeters
@@ -41,14 +127,13 @@ class PhysicsInformedCompositeLoss(nn.Module):
         # Morphological penalty: Ratio of perimeter to area (penalizes fragmentation)
         fragmentation_penalty = perimeter / area
         
-        # Aggregate the final loss
-        total_loss = (self.ce_weight * base_loss) + (self.physics_weight * fragmentation_penalty)
+        total_loss = (self.baseline_weight * base_loss) + (self.physics_weight * fragmentation_penalty)
         
         return total_loss
 
     def to_dict(self):
         return {
-            "ce_weight": self.ce_weight,
-            "physics_weight": self.physics_weight,
-            "void_class_index": self.void_class_index
+            "baseline": self.base_loss.__class__.__name__,
+            "baseline_weight": self.baseline_weight,
+            "physics_weight": self.physics_weight
         }

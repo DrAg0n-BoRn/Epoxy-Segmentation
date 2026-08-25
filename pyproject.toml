@@ -1,11 +1,11 @@
 [project]
 name = "epoxy_segmentation"
-version = "1.0.0"
+version = "2.0.0"
 description = "Segmentation of Carbon Fiber-Epoxy composite microstructure images using deep learning."
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "dragon-ml-toolbox[ml]==24.0.1",
+    "dragon-ml-toolbox[ml]==26.6.1",
 ]
 
 [dependency-groups]

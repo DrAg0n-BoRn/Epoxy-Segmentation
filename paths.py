@@ -1,4 +1,4 @@
-from ml_tools.path_manager import DragonPathManager
+from dragon.path_manager import DragonPathManager
 
 
 # 1. Initialize the PathManager using this file as the anchor, adding base directories.
@@ -7,35 +7,46 @@ PM = DragonPathManager(
     base_directories=["helpers", "results", "backups", "data"]
 )
 
+
 # 2. Define directories and files.
 ### Base files
-PM.images_dir = PM.data / "images"
-PM.masks_dir = PM.data / "masks"
-PM.raw_masks_dir = PM.data / "raw-masks"
+PM.images = PM.data / "images"
+PM.masks = PM.data / "masks"
+PM.raw_masks = PM.data / "raw-masks"
 
 ### Tiled dataset
 PM.tiled = PM.data / "images_tiled"
-PM.tiled_images_dir = PM.tiled / "images"
-PM.tiled_masks_dir = PM.tiled / "masks"
+PM.tiled_images = PM.tiled / "images"
+PM.tiled_masks = PM.tiled / "masks"
+
+### VisionDataset
+PM.dataset = PM.results / "3 VisionDataset"
+PM.dataset_manifest_file = PM.dataset / "vision_dataset_manifest.json"
+PM.transform_recipe_file = PM.dataset / "transform_recipe.json"
 
 ### Training
-PM.segmentation_fcn = PM.results / "Segmentation FCN"
-PM.segmentation_deeplab = PM.results / "Segmentation DeepLab"
+PM.segmentation_fcn = PM.results / "4 Segmentation FCN"
 
-### Physics Informed Loss
-PM.segmentation_deeplab_picl_10 = PM.results / "Segmentation DeepLab PICL 10"
-PM.segmentation_deeplab_picl_50 = PM.results / "Segmentation DeepLab PICL 50"
-PM.segmentation_deeplab_picl_99 = PM.results / "Segmentation DeepLab PICL 99"
+PM.segmentation_deeplab = PM.results / "4 Segmentation DeepLab"
+PM.deeplab_dice = PM.segmentation_deeplab / "Dice"
+PM.deeplab_focal = PM.segmentation_deeplab / "Focal"
+PM.deeplab_gen_dice_focal = PM.segmentation_deeplab / "GeneralizedDice-Focal"
+PM.deeplab_tversky = PM.segmentation_deeplab / "Tversky"
 
-### Transform recipe file
-PM.transform_recipe = PM.results / "transform_recipe.json"
+### PICL
+PM.picl = PM.results / "5 PICL"
 
 ### Inference
-PM.tiled_inference_dir = PM.data / "images_inference_tiled"
-PM.reconstructed_inference_dir = PM.results / "Predicted Masks"
+PM.tiled_inference = PM.data / "images_inference_tiled"
+PM.reconstructed_inference = PM.results / "6 Predicted Masks"
 
 ### Physical Properties
-PM.properties_dir = PM.results / "Physical Properties"
+PM.properties = PM.results / "7 Physical Properties"
+PM.properties_mask = PM.properties / "Masks"
+
+### Statistics
+PM.statistics = PM.results / "8 Statistics"
+
 
 # 3. Make directories and check status
 PM.make_dirs()
