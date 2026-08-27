@@ -9,6 +9,11 @@ from dragon.IO_tools import save_json
 from .constants import CLASS_FIBER_EPOXY_MATRIX, CLASS_POLYMER_COATING, CLASS_VOIDS, RELATIVE_MATRIX_POROSITY_FILENAME, RELATIVE_COATING_AREA_FILENAME
 
 
+__all__ = [
+    "save_relative_properties"
+]
+
+
 ## helper visualization function to plot properties
 def _plot_properties(data: dict[str, Union[int, float]], 
                     ylabel: str, 

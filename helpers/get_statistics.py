@@ -10,6 +10,15 @@ from .constants import RELATIVE_COATING_AREA_FILENAME, RELATIVE_MATRIX_POROSITY_
 from .format_model_name import _format_model_name
 
 
+__all__ = [
+    "plot_model_errors",
+    "convert_wide_to_long",
+    "parse_strategies_to_df",
+    "get_relative_error_df",
+    "get_absolute_error_df"
+]
+
+
 def plot_model_errors(df_wide: pd.DataFrame, 
                       output_dir: Union[str, Path],
                       x_col="Semantic Segmentation Strategy", 
