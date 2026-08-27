@@ -5,9 +5,9 @@ from typing import Optional, Union
 from pathlib import Path
 
 from dragon.path_manager import make_fullpath, sanitize_filename, list_files_by_extension
-from dragon._helpers import wrap_text
 
 from .constants import RELATIVE_COATING_AREA_FILENAME, RELATIVE_MATRIX_POROSITY_FILENAME
+from .format_model_name import _format_model_name
 
 
 def plot_model_errors(df_wide: pd.DataFrame, 
@@ -118,20 +118,7 @@ def parse_strategies_to_df(strategy_dirs: dict[str, Path],):
     for strategy, strategy_subdir in strategy_dirs.items():
         
         # format strategy name for better readability
-        if strategy == "1_0-0_1":
-            strategy = "PILF 0.10"
-        elif strategy == "1_0-0_05":
-            strategy = "PILF 0.05"
-        elif strategy == "1_0-0_3":
-            strategy = "PILF 0.30"
-        elif strategy == "1_0-0_5":
-            strategy = "PILF 0.50"
-        elif strategy == "1_0-0_99":
-            strategy = "PILF 0.99"
-        elif strategy == "GeneralizedDice-Focal":
-            strategy = "Generalized Dice Focal"
-        
-        strategy = wrap_text(strategy, width=12)
+        strategy = _format_model_name(strategy)
         
         # find json files
         all_json_files = list_files_by_extension(directory=strategy_subdir, 

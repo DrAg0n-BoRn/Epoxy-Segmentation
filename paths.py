@@ -46,7 +46,7 @@ PM.properties_mask = PM.properties / "Masks"
 
 ### Statistics
 PM.statistics = PM.results / "8 Statistics"
-
+PM.all_metrics = PM.results / "9 All Metrics"
 
 # 3. Make directories and check status
 PM.make_dirs()
